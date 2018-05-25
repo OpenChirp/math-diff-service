@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"strconv"
@@ -72,6 +73,7 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 			outtopic = intopic + defaultOutputTopicSuffix
 		}
 		d.outtopics[i] = outtopic
+		d.lastvalues[i] = math.NaN()
 		ctrl.Subscribe(framework.TransducerPrefix+"/"+intopic, i)
 	}
 
@@ -106,6 +108,13 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
 		logitem.Warnf("Failed to convert message (\"%v\") to float64", string(msg.Payload()))
+		return
+	}
+
+	// First value is only stored, so that we don't get spurious spikes
+	if math.IsNaN(d.lastvalues[index]) {
+		logitem.Debugf("Setting first value | newvalue=%.10f", value)
+		d.lastvalues[index] = value
 		return
 	}
 
