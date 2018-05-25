@@ -22,12 +22,17 @@ const (
 )
 
 const (
+	configKeyInputTopics  = "InputTopics"
+	configKeyOutputTopics = "OutputTopics"
+)
+
+const (
+	defaultOutputTopicSuffix = "_diff"
+)
+
+const (
 	// Set this value to true to have the service publish a service status of
 	// "Running" each time it receives a device update event
-	//
-	// This could be used as a service alive pulse if enabled
-	// Otherwise, the service status will indicate "Started" at the time the
-	// service "Started" the client
 	runningStatus = true
 )
 
@@ -40,7 +45,6 @@ type Device struct {
 // NewDevice is called by the framework when a new device has been linked.
 func NewDevice() framework.Device {
 	d := new(Device)
-	// Change type to the Device interface
 	return framework.Device(d)
 }
 
@@ -51,8 +55,8 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	logitem.Debug("Linking with config:", ctrl.Config())
 
 	// Allows space in comma seperated list
-	inputTopicsString := strings.Replace(ctrl.Config()["InputTopics"], " ", "", -1)
-	outputTopicsString := strings.Replace(ctrl.Config()["OutputTopics"], " ", "", -1)
+	inputTopicsString := strings.Replace(ctrl.Config()[configKeyInputTopics], " ", "", -1)
+	outputTopicsString := strings.Replace(ctrl.Config()[configKeyOutputTopics], " ", "", -1)
 	inputTopics := strings.Split(inputTopicsString, ",")
 	outputTopics := strings.Split(outputTopicsString, ",")
 
@@ -65,7 +69,7 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 			outtopic = outputTopics[i]
 		} else {
 			// if no putput topic specified, simply append a _diff to the topic
-			outtopic = intopic + "_diff"
+			outtopic = intopic + defaultOutputTopicSuffix
 		}
 		d.outtopics[i] = outtopic
 		ctrl.Subscribe(framework.TransducerPrefix+"/"+intopic, i)
