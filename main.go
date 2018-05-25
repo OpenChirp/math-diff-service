@@ -1,17 +1,15 @@
 // Craig Hesling
 // November 26, 2017
 //
-// This is an example OpenChirp service that tracks the number of publications
-// to the rawrx and rawtx topics and publishes the count to the
-// rawrxcount and rawtxcount transducer topics.
-// This example demonstates argument/environment variable parsing,
-// setting up the service client, and handling device transducer data.
+// This is a simple OpenChirp service that output the running diff of the data.
 package main
 
 import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/openchirp/framework"
@@ -44,16 +42,13 @@ const (
 //
 // In this example, we will keep track of the rawrx and rawtx message counts
 type Device struct {
-	rawRxCount int
-	rawTxCount int
+	outtopics  []string
+	lastvalues []float64
 }
 
 // NewDevice is called by the framework when a new device has been linked.
 func NewDevice() framework.Device {
 	d := new(Device)
-	// The following initialization is redundant in Go
-	d.rawRxCount = 0
-	d.rawTxCount = 0
 	// Change type to the Device interface
 	return framework.Device(d)
 }
@@ -67,10 +62,26 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debug("Linking with config:", ctrl.Config())
 
-	// Subscribe to subtopic "transducer/rawrx"
-	ctrl.Subscribe(framework.TransducerPrefix+"/rawrx", rawRxKey)
-	// Subscribe to subtopic "transducer/rawtx"
-	ctrl.Subscribe(framework.TransducerPrefix+"/rawtx", rawTxKey)
+	// Allows space in comma seperated list
+	inputTopicsString := strings.Replace(ctrl.Config()["InputTopics"], " ", "", -1)
+	outputTopicsString := strings.Replace(ctrl.Config()["OutputTopics"], " ", "", -1)
+	inputTopics := strings.Split(inputTopicsString, ",")
+	outputTopics := strings.Split(outputTopicsString, ",")
+
+	d.outtopics = make([]string, len(inputTopics))
+	d.lastvalues = make([]float64, len(inputTopics))
+
+	for i, intopic := range inputTopics {
+		var outtopic string
+		if i < len(outputTopics) {
+			outtopic = outputTopics[i]
+		} else {
+			// if no putput topic specified, simply append a _diff to the topic
+			outtopic = intopic + "_diff"
+		}
+		d.outtopics[i] = outtopic
+		ctrl.Subscribe(framework.TransducerPrefix+"/"+intopic, i)
+	}
 
 	logitem.Debug("Finished Linking")
 
@@ -83,10 +94,6 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 func (d *Device) ProcessUnlink(ctrl *framework.DeviceControl) {
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debug("Unlinked:")
-
-	// The framework already handles unsubscribing from all
-	// Device associted subtopics, so we don't need to call
-	// ctrl.Unsubscribe.
 }
 
 // ProcessConfigChange is intended to handle a service config updates.
@@ -102,12 +109,6 @@ func (d *Device) ProcessConfigChange(ctrl *framework.DeviceControl, cchanges, co
 
 	logitem.Debug("Ignoring Config Change:", cchanges)
 	return "", false
-
-	// If we have processed this config change, we should return the
-	// new service status message and true.
-	//
-	//logitem.Debug("Processing Config Change:", cchanges)
-	//return "Sucessfully updated", true
 }
 
 // ProcessMessage is called upon receiving a pubsub message destined for
@@ -119,17 +120,16 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debugf("Processing Message: %v: [ % #x ]", msg.Key(), msg.Payload())
 
-	if msg.Key().(int) == rawRxKey {
-		d.rawRxCount++
-		subtopic := framework.TransducerPrefix + "/rawrxcount"
-		ctrl.Publish(subtopic, fmt.Sprint(d.rawRxCount))
-	} else if msg.Key().(int) == rawTxKey {
-		d.rawTxCount++
-		subtopic := framework.TransducerPrefix + "/rawtxcount"
-		ctrl.Publish(subtopic, fmt.Sprint(d.rawTxCount))
-	} else {
-		logitem.Errorln("Received unassociated message")
+	index := msg.Key().(int)
+	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
+	if err != nil {
+		logitem.Warnf("Failed to convert message (\"%v\") to float64", string(msg.Payload()))
 	}
+
+	diff := value - d.lastvalues[index]
+	d.lastvalues[index] = value
+
+	ctrl.Publish(framework.TransducerPrefix+"/"+d.outtopics[index], fmt.Sprintf("%.10f", diff))
 }
 
 // run is the main function that gets called once form main()
