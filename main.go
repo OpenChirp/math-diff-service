@@ -73,7 +73,7 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 
 	for i, intopic := range inputTopics {
 		var outtopic string
-		if i < len(outputTopics) {
+		if i < len(outputTopics) && (len(outputTopics[i]) > 0) {
 			outtopic = outputTopics[i]
 		} else {
 			// if no putput topic specified, simply append a _diff to the topic
