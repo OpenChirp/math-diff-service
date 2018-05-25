@@ -106,6 +106,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
 	if err != nil {
 		logitem.Warnf("Failed to convert message (\"%v\") to float64", string(msg.Payload()))
+		return
 	}
 
 	diff := value - d.lastvalues[index]
