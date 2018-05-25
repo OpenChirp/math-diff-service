@@ -1,5 +1,5 @@
 // Craig Hesling
-// November 26, 2017
+// May 25, 2018
 //
 // This is a simple OpenChirp service that output the running diff of the data.
 package main
@@ -31,16 +31,7 @@ const (
 	runningStatus = true
 )
 
-const (
-	// The subscription key used to identify a messages types
-	rawRxKey = 0
-	rawTxKey = 1
-)
-
-// Device holds any data you want to keep around for a specific
-// device that has linked your service.
-//
-// In this example, we will keep track of the rawrx and rawtx message counts
+// Device holds the device specific last values and target topics for the difference.
 type Device struct {
 	outtopics  []string
 	lastvalues []float64
@@ -56,9 +47,6 @@ func NewDevice() framework.Device {
 // ProcessLink is called once, during the initial setup of a
 // device, and is provided the service config for the linking device.
 func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
-	// This simply sets up console logging for our program.
-	// Any time this logitem is use to print messages,
-	// the key/value string "deviceid=<device_id>" is prepended to the line.
 	logitem := log.WithField("deviceid", ctrl.Id())
 	logitem.Debug("Linking with config:", ctrl.Config())
 
@@ -96,14 +84,7 @@ func (d *Device) ProcessUnlink(ctrl *framework.DeviceControl) {
 	logitem.Debug("Unlinked:")
 }
 
-// ProcessConfigChange is intended to handle a service config updates.
-// If your program does not need to handle incremental config changes,
-// simply return false, to indicate the config update was unhandled.
-// The framework will then automatically issue a ProcessUnlink and then a
-// ProcessLink, instead. Note, NewDevice is not called.
-//
-// For more information about this or other Device interface functions,
-// please see https://godoc.org/github.com/OpenChirp/framework#Device .
+// ProcessConfigChange is ignored in this case.
 func (d *Device) ProcessConfigChange(ctrl *framework.DeviceControl, cchanges, coriginal map[string]string) (string, bool) {
 	logitem := log.WithField("deviceid", ctrl.Id())
 
@@ -113,12 +94,9 @@ func (d *Device) ProcessConfigChange(ctrl *framework.DeviceControl, cchanges, co
 
 // ProcessMessage is called upon receiving a pubsub message destined for
 // this device.
-// Along with the standard DeviceControl object, the handler is provided
-// a Message object, which contains the received message's payload,
-// subtopic, and the provided Subscribe key.
 func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Message) {
 	logitem := log.WithField("deviceid", ctrl.Id())
-	logitem.Debugf("Processing Message: %v: [ % #x ]", msg.Key(), msg.Payload())
+	logitem.Debugf("Processing diff for topic %s", msg.Topic())
 
 	index := msg.Key().(int)
 	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
@@ -129,6 +107,8 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	diff := value - d.lastvalues[index]
 	d.lastvalues[index] = value
 
+	logitem.Debugf("lastvalue=%.10f | newvalue=%.10f | diff=%.10f", d.lastvalues[index], value, diff)
+
 	ctrl.Publish(framework.TransducerPrefix+"/"+d.outtopics[index], fmt.Sprintf("%.10f", diff))
 }
 
@@ -137,7 +117,7 @@ func run(ctx *cli.Context) error {
 	/* Set logging level (verbosity) */
 	log.SetLevel(log.Level(uint32(ctx.Int("log-level"))))
 
-	log.Info("Starting Example Service")
+	log.Info("Starting Math Diff Service")
 
 	/* Start framework service client */
 	c, err := framework.StartServiceClientManaged(
@@ -187,11 +167,11 @@ func run(ctx *cli.Context) error {
 }
 
 func main() {
-	/* Parse arguments and environemtnal variable */
+	/* Parse arguments and environmental variable */
 	app := cli.NewApp()
-	app.Name = "example-service"
+	app.Name = "math-diff-service"
 	app.Usage = ""
-	app.Copyright = "See https://github.com/openchirp/example-service for copyright information"
+	app.Copyright = "See https://github.com/openchirp/math-diff-service for copyright information"
 	app.Version = version
 	app.Action = run
 	app.Flags = []cli.Flag{
