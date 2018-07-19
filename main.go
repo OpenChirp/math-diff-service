@@ -74,7 +74,7 @@ func (d *Device) ProcessLink(ctrl *framework.DeviceControl) string {
 		}
 		d.outtopics[i] = outtopic
 		d.lastvalues[i] = math.NaN()
-		ctrl.Subscribe(framework.TransducerPrefix+"/"+intopic, i)
+		ctrl.Subscribe(intopic, i)
 	}
 
 	logitem.Debug("Finished Linking")
@@ -123,7 +123,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 
 	logitem.Debugf("lastvalue=%.10f | newvalue=%.10f | diff=%.10f", d.lastvalues[index], value, diff)
 
-	ctrl.Publish(framework.TransducerPrefix+"/"+d.outtopics[index], fmt.Sprintf("%.10f", diff))
+	ctrl.Publish(d.outtopics[index], fmt.Sprintf("%.10f", diff))
 }
 
 // run is the main function that gets called once form main()
