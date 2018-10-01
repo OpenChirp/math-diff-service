@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/OpenChirp/math-diff-service.svg?branch=master)](https://travis-ci.org/OpenChirp/math-diff-service)
+
 # Math-Diff OpenChirp Service
 
 ## Overview
