@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/openchirp/framework"
+	"github.com/openchirp/framework/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
@@ -113,7 +113,7 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 
 	// First value is only stored, so that we don't get spurious spikes
 	if math.IsNaN(d.lastvalues[index]) {
-		logitem.Debugf("Setting first value | newvalue=%.10f", value)
+		logitem.Debugf("Setting first value | newvalue=%s", utils.FormatFloat64(value))
 		d.lastvalues[index] = value
 		return
 	}
@@ -121,9 +121,9 @@ func (d *Device) ProcessMessage(ctrl *framework.DeviceControl, msg framework.Mes
 	diff := value - d.lastvalues[index]
 	d.lastvalues[index] = value
 
-	logitem.Debugf("lastvalue=%.10f | newvalue=%.10f | diff=%.10f", d.lastvalues[index], value, diff)
+	logitem.Debugf("lastvalue=%.10f | newvalue=%.10f | diff=%s", d.lastvalues[index], value, utils.FormatFloat64(diff))
 
-	ctrl.Publish(d.outtopics[index], fmt.Sprintf("%.10f", diff))
+	ctrl.Publish(d.outtopics[index], utils.FormatFloat64(diff))
 }
 
 // run is the main function that gets called once form main()
