@@ -6,5 +6,7 @@
 This is a simple OpenChirp service that output the running diff of the data.
 
 # Service Config
-* `InputTopics` - Required - Comma separated list of input topics
-* `OutputTopics` - Optional - Comma separated list of corresponding output topics
+| Key Name | Key Description | Key Example | Is Required? |
+| - | - | - | - |
+| `InputTopics` | Comma separated list of input topics to apply the diff to | frequency, temp | Required |
+| `OutputTopics` | Comma separated list of corresponding output topics | frequency_diff, temp_diff | Optional |
