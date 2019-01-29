@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/openchirp/framework/rest"
+
 	"github.com/openchirp/framework"
 	"github.com/openchirp/framework/utils"
 	log "github.com/sirupsen/logrus"
@@ -26,6 +28,21 @@ const (
 	configKeyInputTopics  = "InputTopics"
 	configKeyOutputTopics = "OutputTopics"
 )
+
+var configParams = []rest.ServiceConfigParameter{
+	rest.ServiceConfigParameter{
+		Name:        configKeyInputTopics,
+		Description: "Comma separated list of input topics to apply the diff to",
+		Example:     "frequency, temp",
+		Required:    true,
+	},
+	rest.ServiceConfigParameter{
+		Name:        configKeyOutputTopics,
+		Description: "Comma separated list of corresponding output topics",
+		Example:     "frequency_diff, temp_diff",
+		Required:    false,
+	},
+}
 
 const (
 	defaultOutputTopicSuffix = "_diff"
@@ -154,6 +171,13 @@ func run(ctx *cli.Context) error {
 		return cli.NewExitError(nil, 1)
 	}
 	log.Info("Published Service Status")
+
+	/* Updating device config parameters */
+	if err := c.UpdateConfigParameters(configParams); err != nil {
+		log.Error("Failed to update service config parameters: ", err)
+		return cli.NewExitError(nil, 1)
+	}
+	log.Info("Updated Service Config Parameters")
 
 	/* Setup signal channel */
 	signals := make(chan os.Signal, 1)
